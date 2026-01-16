@@ -17,7 +17,10 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
     "vite": "^7.3.0",
+    "vite-plugin-node-polyfills": "^0.25.0",
     "vite-plugin-vue-devtools": "^8.0.5"
   }
 }
