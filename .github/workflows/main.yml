@@ -2,9 +2,9 @@ name: Test WELCOME TO BECCO
 
 on:
   push:
-    branches: [ development ]
+    branches: [ main ]
   pull_request:
-    branches: [ development ]
+    branches: [ main ]
     types: [closed]
     if: github.event.pull_request.merged == true
 
