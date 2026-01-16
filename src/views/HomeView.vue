@@ -13,8 +13,10 @@
       </button>
       
       <div v-if="clickCount > 0" class="counter" data-testid="click-counter">
-        Button clicked {{ clickCount }} times
+        Button clicked {{ clickCount }} times, you know that??
       </div>
+
+      <div>this is secoind push</div>
       
       <input 
         type="text" 
