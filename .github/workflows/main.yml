@@ -2,16 +2,15 @@ name: Test WELCOME TO BECCO
 
 on:
   push:
-    branches: [ main ]
+    branches: [ test ]
   pull_request:
-    branches: [ main ]
+    branches: [ test ]
     types: [closed]
     if: github.event.pull_request.merged == true
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     
     steps:
     # 1. Build UI
@@ -23,27 +22,15 @@ jobs:
       with:
         node-version: '20'
     
-    - name: Install & Build UI
+    - name: Install & Build
       run: |
         npm ci
         npm run build
     
-    - name: Start UI Server
+    - name: Start Server
       run: |
-        # Start server in background
-        npx vite preview --port 4173 --host 0.0.0.0 &
-        SERVER_PID=$!
-        echo "Server started with PID: $SERVER_PID"
-        
-        # Wait for server to be ready
-        for i in {1..10}; do
-          if curl -s http://localhost:4173 > /dev/null; then
-            echo "✅ UI server is ready!"
-            break
-          fi
-          echo "⏳ Waiting for server... ($i/10)"
-          sleep 3
-        done
+        npm run preview &
+        sleep 5
     
     # 2. Get test scripts
     - name: Get Test Scripts
@@ -57,31 +44,16 @@ jobs:
         npm ci
         npx playwright install chromium
     
-    # 3. Create test-results directory
-    - name: Create test directory
-      run: mkdir -p test-results
-    
-    # 4. Run test with UI URL
+    # 3. Run test
     - name: Run Test
-      run: npx playwright test --reporter=html,line
+      run: npx playwright test --reporter=html
       env:
         UI_BASE_URL: http://localhost:4173
     
-    # 5. Upload results
-    - name: Upload Test Report
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 7
-    
+    # 4. Upload screenshot
     - name: Upload Screenshot
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: welcome-screenshot
-        path: |
-          test-results/
-          welcome-to-becco.png
-        retention-days: 7
+        path: test-results/welcome-to-becco.png
