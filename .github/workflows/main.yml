@@ -1,0 +1,91 @@
+name: Playwright Tests from External Repo
+
+on:
+  push:
+    branches: [ development ]
+  pull_request:
+    branches: [ development ]
+    types: [closed]
+    if: github.event.pull_request.merged == true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout UI repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install UI dependencies
+      run: npm ci
+    
+    - name: Build UI
+      run: npm run build
+    
+    - name: Start UI server in background
+      run: |
+        npm run preview &
+        echo "UI server starting on port 4173"
+    
+    - name: Wait for UI server
+      run: |
+        for i in {1..30}; do
+          if curl -s http://localhost:4173 > /dev/null; then
+            echo "UI server is ready!"
+            break
+          fi
+          echo "Waiting for UI server... (attempt $i/30)"
+          sleep 2
+        done
+    
+    - name: Checkout test-scripts repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository_owner }}/test-scripts-repo
+        token: ${{ secrets.TEST_REPO_TOKEN }}
+        path: test-scripts
+    
+    - name: Setup Node.js for tests
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: test-scripts/package-lock.json
+    
+    - name: Install Playwright dependencies
+      run: |
+        cd test-scripts
+        npm ci
+        npx playwright install --with-deps chromium firefox webkit
+    
+    - name: Run Playwright tests
+      run: |
+        cd test-scripts
+        npm test
+      env:
+        UI_BASE_URL: http://localhost:4173
+    
+    - name: Upload Playwright report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: test-scripts/playwright-report/
+        retention-days: 30
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: test-scripts/test-results/
+        retention-days: 30
