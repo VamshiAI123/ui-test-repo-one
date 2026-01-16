@@ -1,117 +1,87 @@
-name: UI Build & Test Pipeline
+name: Test WELCOME TO BECCO
 
 on:
   push:
-    branches: [ main ]
+    branches: [ development ]
   pull_request:
-    branches: [ main ]
+    branches: [ development ]
     types: [closed]
     if: github.event.pull_request.merged == true
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     
     steps:
-    - name: Checkout UI repository
+    # 1. Build UI
+    - name: Checkout UI
       uses: actions/checkout@v4
-      with:
-        path: ui-repo
     
-    # ✅ Fixed: Using Node.js 20
-    - name: Setup Node.js 20
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: ui-repo/package-lock.json
     
-    - name: Install UI dependencies
+    - name: Install & Build UI
       run: |
-        cd ui-repo
         npm ci
-    
-    # ✅ Fixed: Set NODE_OPTIONS before build
-    - name: Build UI Application
-      run: |
-        cd ui-repo
-        export NODE_OPTIONS="--experimental-specifier-resolution=node"
         npm run build
     
     - name: Start UI Server
       run: |
-        cd ui-repo
-        # Start server and keep it running
-        nohup npm run preview > server.log 2>&1 &
-        echo $! > server.pid
-        echo "UI server started (PID: $(cat server.pid))"
-    
-    - name: Wait for UI Server
-      run: |
-        echo "Waiting for UI server to start..."
-        sleep 5
+        # Start server in background
+        npx vite preview --port 4173 --host 0.0.0.0 &
+        SERVER_PID=$!
+        echo "Server started with PID: $SERVER_PID"
         
-        # Check if server is running
-        for i in {1..15}; do
-          if ps -p $(cat ui-repo/server.pid) > /dev/null 2>&1; then
-            if curl -s -f http://localhost:4173 > /dev/null; then
-              echo "✅ UI server is running and responsive"
-              break
-            fi
+        # Wait for server to be ready
+        for i in {1..10}; do
+          if curl -s http://localhost:4173 > /dev/null; then
+            echo "✅ UI server is ready!"
+            break
           fi
-          echo "Attempt $i/15: Waiting for server..."
-          sleep 2
+          echo "⏳ Waiting for server... ($i/10)"
+          sleep 3
         done
-        
-        # Show server logs if failed
-        if ! curl -s -f http://localhost:4173 > /dev/null; then
-          echo "❌ Server failed to start"
-          cat ui-repo/server.log
-          exit 1
-        fi
     
-    - name: Checkout Test Repository
+    # 2. Get test scripts
+    - name: Get Test Scripts
       uses: actions/checkout@v4
       with:
         repository: ${{ github.repository_owner }}/test-repo-playwright-one
         token: ${{ secrets.TEST_REPO_TOKEN }}
-        path: playwright-tests
     
-    - name: Setup Node.js for Tests
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: playwright-tests/package-lock.json
-    
-    - name: Install Test Dependencies
+    - name: Install Playwright
       run: |
-        cd playwright-tests
         npm ci
         npx playwright install chromium
     
-    - name: Run Playwright Tests
-      run: |
-        cd playwright-tests
-        npx playwright test --reporter=html
+    # 3. Create test-results directory
+    - name: Create test directory
+      run: mkdir -p test-results
+    
+    # 4. Run test with UI URL
+    - name: Run Test
+      run: npx playwright test --reporter=html,line
       env:
         UI_BASE_URL: http://localhost:4173
-        CI: true
     
+    # 5. Upload results
     - name: Upload Test Report
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: playwright-report
-        path: playwright-tests/playwright-report/
-        retention-days: 30
+        path: playwright-report/
+        retention-days: 7
     
-    - name: Stop UI Server
+    - name: Upload Screenshot
       if: always()
-      run: |
-        if [ -f ui-repo/server.pid ]; then
-          echo "Stopping UI server..."
-          kill $(cat ui-repo/server.pid) 2>/dev/null || true
-          rm -f ui-repo/server.pid
-        fi
+      uses: actions/upload-artifact@v4
+      with:
+        name: welcome-screenshot
+        path: |
+          test-results/
+          welcome-to-becco.png
+        retention-days: 7
