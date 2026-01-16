@@ -2,9 +2,9 @@ name: Playwright Tests from External Repo
 
 on:
   push:
-    branches: [ test ]
+    branches: [ main ]
   pull_request:
-    branches: [ test ]
+    branches: [ main ]
     types: [closed]
     if: github.event.pull_request.merged == true
 
