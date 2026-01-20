@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <h1>WELCOME TO BECCO</h1>
+    <h1>WELCOME TO BECCO TEST</h1>
   </div>
 </template>
 
