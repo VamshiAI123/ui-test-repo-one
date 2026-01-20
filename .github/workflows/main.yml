@@ -1,21 +1,21 @@
 name: Test WELCOME TO BECCO
 
 on:
-  push:
-    branches: [ test ]
   pull_request:
     branches: [ test ]
     types: [closed]
-    if: github.event.pull_request.merged == true
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
     
     steps:
     # 1. Build UI
     - name: Checkout UI
       uses: actions/checkout@v4
+      with:
+        path: ui-repo
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -26,11 +26,13 @@ jobs:
       run: |
         npm ci
         npm run build
+      working-directory: ui-repo
     
     - name: Start Server
       run: |
-        npm run preview &
-        sleep 5
+        npm run preview > server.log 2>&1 &
+        npx wait-on http://localhost:4173 --timeout 30000
+      working-directory: ui-repo
     
     # 2. Get test scripts
     - name: Get Test Scripts
@@ -38,15 +40,18 @@ jobs:
       with:
         repository: ${{ github.repository_owner }}/test-repo-playwright-one
         token: ${{ secrets.TEST_REPO_TOKEN }}
+        path: test-repo
     
     - name: Install Playwright
       run: |
         npm ci
         npx playwright install chromium
+      working-directory: test-repo
     
     # 3. Run test
     - name: Run Test
       run: npx playwright test --reporter=html
+      working-directory: test-repo
       env:
         UI_BASE_URL: http://localhost:4173
     
