@@ -61,4 +61,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: welcome-screenshot
-        path: test-results/welcome-to-becco.png
+        path: test-repo/test-results/
