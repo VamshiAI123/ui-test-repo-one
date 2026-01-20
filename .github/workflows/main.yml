@@ -2,7 +2,7 @@ name: Test WELCOME TO BECCO
 
 on:
   pull_request:
-    branches: [ test ]
+    branches: [ main ]
     types: [closed]
 
 jobs:
